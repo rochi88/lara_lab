@@ -8,6 +8,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\{Exceptions, Middleware};
 use Illuminate\Http\Request;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\{HttpException, MethodNotAllowedHttpException, NotAcceptableHttpException, NotFoundHttpException, TooManyRequestsHttpException};
 
@@ -20,8 +21,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
         $middleware->appendToGroup('ip-whitelist', [IPAuthorizationMiddleware::class]);
         $middleware->appendToGroup('jwt-verify', [JWTTokenMiddleware::class]);
+
+        $middleware->validateCsrfTokens(except: [
+            'stripe/*',
+            'prism/*',
+        ]);
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Handles cases where a requested resource is not found.
